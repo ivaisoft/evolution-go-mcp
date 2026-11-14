@@ -1,38 +1,32 @@
 openapi: 3.0.3
 info:
-  title: Evolution Go REST API
-  version: 1.0.0
-  description: >-
-    OpenAPI contract for the Evolution Go REST endpoints exposed as MCP tools.
-    Supply recipient numbers as WhatsApp JIDs (for example
-    5511999999999@s.whatsapp.net); unlike the original MCP wrapper, this direct
-    API adapter does not convert plain phone numbers to JIDs. The client-side
-    summary helper is omitted because Evolution Go has no corresponding endpoint.
+  title: Evolution API
+  version: 2.3.7
+  description: Operations exposed by evolution-go-mcp and verified against Evolution API v2.3.7.
 servers:
-  - url: https://go.evolution-api.com
-    description: Default Evolution Go endpoint; override this for your instance
+  - url: http://localhost:8080
+    description: Example only; replace with the base URL reachable from the adapter.
 security:
-  - EvolutionGoApiKey: []
+  - EvolutionApiKey: []
 tags:
   - name: Instances
   - name: Messages
+  - name: Chats
 paths:
-  /instance/all:
+  /instance/fetchInstances:
     get:
-      operationId: list_instances
+      operationId: instances
       tags: [Instances]
-      summary: List all instances
+      summary: List instances
       responses:
         '200':
-          description: Instances returned by Evolution Go
+          description: Instances returned by Evolution API
           content:
             application/json:
               schema:
-                anyOf:
-                  - type: array
-                    items:
-                      $ref: '#/components/schemas/JsonObject'
-                  - $ref: '#/components/schemas/JsonObject'
+                type: array
+                items:
+                  $ref: '#/components/schemas/JsonObject'
         default:
           $ref: '#/components/responses/ApiError'
   /instance/create:
@@ -47,121 +41,71 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateInstanceRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /instance/connect:
-    post:
-      operationId: connect_instance
-      tags: [Instances]
-      summary: Connect an instance and configure its webhook
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConnectRequest'
-      responses:
-        '200':
-          $ref: '#/components/responses/ApiResponse'
-        default:
-          $ref: '#/components/responses/ApiError'
-  /instance/disconnect:
-    post:
-      operationId: disconnect_instance
-      tags: [Instances]
-      summary: Disconnect the current instance
-      responses:
-        '200':
-          $ref: '#/components/responses/ApiResponse'
-        default:
-          $ref: '#/components/responses/ApiError'
-  /instance/status:
+  /instance/connect/{instance}:
     get:
-      operationId: get_instance_status
+      operationId: connect
       tags: [Instances]
-      summary: Get the current instance status
+      summary: Connect an instance or get its QR or pairing code
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
+        - name: number
+          in: query
+          required: false
+          description: Phone number for requesting a pairing code
+          schema:
+            type: string
       responses:
         '200':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /instance/qr:
+  /instance/connectionState/{instance}:
     get:
-      operationId: get_pairing_qr
+      operationId: status
       tags: [Instances]
-      summary: Get the QR code for pairing
+      summary: Get instance connection state
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       responses:
         '200':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /instance/pair:
-    post:
-      operationId: request_pairing_code
-      tags: [Instances]
-      summary: Request a pairing code
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PairRequest'
-      responses:
-        '200':
-          $ref: '#/components/responses/ApiResponse'
-        default:
-          $ref: '#/components/responses/ApiError'
-  /instance/logout:
+  /instance/logout/{instance}:
     delete:
-      operationId: logout_instance
+      operationId: logout
       tags: [Instances]
-      summary: Log out the current instance
+      summary: Log out an instance
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       responses:
         '200':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /instance/delete/{instanceId}:
+  /instance/delete/{instance}:
     delete:
       operationId: delete_instance
       tags: [Instances]
-      summary: Delete an instance
+      summary: Delete an instance by name
       parameters:
-        - name: instanceId
-          in: path
-          required: true
-          description: ID of the instance to delete
-          schema:
-            type: string
+        - $ref: '#/components/parameters/InstanceName'
       responses:
         '200':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /instance/proxy/{instanceId}:
-    delete:
-      operationId: delete_instance_proxy
-      tags: [Instances]
-      summary: Remove the proxy from an instance
-      parameters:
-        - name: instanceId
-          in: path
-          required: true
-          description: ID of the instance
-          schema:
-            type: string
-      responses:
-        '200':
-          $ref: '#/components/responses/ApiResponse'
-        default:
-          $ref: '#/components/responses/ApiError'
-  /send/text:
+  /message/sendText/{instance}:
     post:
       operationId: send_text
       tags: [Messages]
-      summary: Send a text message
+      summary: Send text or a link preview
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -169,15 +113,17 @@ paths:
             schema:
               $ref: '#/components/schemas/SendTextRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /send/media:
+  /message/sendMedia/{instance}:
     post:
       operationId: send_media
       tags: [Messages]
-      summary: Send media by URL
+      summary: Send media by URL or base64
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -185,15 +131,17 @@ paths:
             schema:
               $ref: '#/components/schemas/SendMediaRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /send/location:
+  /message/sendLocation/{instance}:
     post:
       operationId: send_location
       tags: [Messages]
       summary: Send a location
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -201,15 +149,17 @@ paths:
             schema:
               $ref: '#/components/schemas/SendLocationRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /send/contact:
+  /message/sendContact/{instance}:
     post:
       operationId: send_contact
       tags: [Messages]
       summary: Send a contact card
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -217,31 +167,17 @@ paths:
             schema:
               $ref: '#/components/schemas/SendContactRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /send/link:
-    post:
-      operationId: send_link
-      tags: [Messages]
-      summary: Send a link preview
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SendLinkRequest'
-      responses:
-        '200':
-          $ref: '#/components/responses/ApiResponse'
-        default:
-          $ref: '#/components/responses/ApiError'
-  /send/sticker:
+  /message/sendSticker/{instance}:
     post:
       operationId: send_sticker
       tags: [Messages]
-      summary: Send a sticker by URL
+      summary: Send a sticker
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -249,15 +185,17 @@ paths:
             schema:
               $ref: '#/components/schemas/SendStickerRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /send/poll:
+  /message/sendPoll/{instance}:
     post:
       operationId: send_poll
       tags: [Messages]
       summary: Send a poll
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -265,47 +203,53 @@ paths:
             schema:
               $ref: '#/components/schemas/SendPollRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /message/react:
+  /message/sendReaction/{instance}:
     post:
-      operationId: react_to_message
+      operationId: react
       tags: [Messages]
       summary: React to a message
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ReactRequest'
+              $ref: '#/components/schemas/ReactionRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /message/edit:
+  /chat/updateMessage/{instance}:
     post:
       operationId: edit_message
-      tags: [Messages]
+      tags: [Chats]
       summary: Edit a sent message
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EditMessageRequest'
+              $ref: '#/components/schemas/UpdateMessageRequest'
       responses:
         '200':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /message/delete:
-    post:
+  /chat/deleteMessageForEveryone/{instance}:
+    delete:
       operationId: delete_message
-      tags: [Messages]
+      tags: [Chats]
       summary: Delete a message for everyone
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -313,15 +257,17 @@ paths:
             schema:
               $ref: '#/components/schemas/DeleteMessageRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /message/markread:
+  /chat/markMessageAsRead/{instance}:
     post:
-      operationId: mark_messages_read
-      tags: [Messages]
+      operationId: mark_read
+      tags: [Chats]
       summary: Mark messages as read
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -329,31 +275,35 @@ paths:
             schema:
               $ref: '#/components/schemas/MarkReadRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /message/status:
+  /chat/findStatusMessage/{instance}:
     post:
-      operationId: get_message_status
-      tags: [Messages]
-      summary: Get message delivery status
+      operationId: message_status
+      tags: [Chats]
+      summary: Find delivery updates for a message
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MessageStatusRequest'
+              $ref: '#/components/schemas/FindStatusRequest'
       responses:
         '200':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
-  /message/presence:
+  /chat/sendPresence/{instance}:
     post:
-      operationId: set_chat_presence
-      tags: [Messages]
+      operationId: set_presence
+      tags: [Chats]
       summary: Set chat presence
+      parameters:
+        - $ref: '#/components/parameters/InstanceName'
       requestBody:
         required: true
         content:
@@ -361,26 +311,34 @@ paths:
             schema:
               $ref: '#/components/schemas/SetPresenceRequest'
       responses:
-        '200':
+        '201':
           $ref: '#/components/responses/ApiResponse'
         default:
           $ref: '#/components/responses/ApiError'
 components:
   securitySchemes:
-    EvolutionGoApiKey:
+    EvolutionApiKey:
       type: apiKey
       in: header
       name: apikey
-      description: API key for the Evolution Go instance
+      description: Evolution API key; configure as a sensitive credential
+  parameters:
+    InstanceName:
+      name: instance
+      in: path
+      required: true
+      description: Evolution API instance name
+      schema:
+        type: string
   responses:
     ApiResponse:
-      description: Response returned by Evolution Go
+      description: Response returned by Evolution API
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/JsonObject'
     ApiError:
-      description: Evolution Go API error
+      description: Evolution API error
       content:
         application/json:
           schema:
@@ -394,50 +352,32 @@ components:
       properties:
         delay:
           type: integer
-          description: Optional delay in milliseconds before sending
         quoted:
           type: object
+          description: Evolution API quoted message with key and message
           additionalProperties: true
-          description: Quoted message object, usually with messageId and participant
-        mentionAll:
+        everyOne:
           type: boolean
-          description: Mention all participants
-        mentionedJid:
+        mentioned:
           type: array
           items:
             type: string
-          description: WhatsApp JIDs to mention
+        linkPreview:
+          type: boolean
     CreateInstanceRequest:
       type: object
-      required: [instanceName]
+      required: [instanceName, integration]
       properties:
         instanceName:
           type: string
         token:
           type: string
-          description: Optional instance auth token
-    ConnectRequest:
-      type: object
-      required: [phone, webhook]
-      properties:
-        phone:
+        integration:
           type: string
-          description: Phone number used to connect this instance
-        webhook:
-          type: string
-          format: uri
-        immediate:
+          default: WHATSAPP-BAILEYS
+        qrcode:
           type: boolean
-        subscribe:
-          type: array
-          items:
-            type: string
-          description: Webhook events to subscribe to
-    PairRequest:
-      type: object
-      required: [phone]
-      properties:
-        phone:
+        number:
           type: string
     SendTextRequest:
       allOf:
@@ -447,24 +387,25 @@ components:
           properties:
             number:
               type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
+              description: Phone number in digits without the WhatsApp JID suffix
             text:
               type: string
     SendMediaRequest:
       allOf:
         - $ref: '#/components/schemas/SendOptions'
         - type: object
-          required: [number, mediaUrl, mediatype]
+          required: [number, media, mediatype]
           properties:
             number:
               type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-            mediaUrl:
+            media:
               type: string
-              format: uri
+              description: Media URL or base64 data
             mediatype:
               type: string
               enum: [image, video, audio, document]
+            mimetype:
+              type: string
             caption:
               type: string
             fileName:
@@ -473,11 +414,10 @@ components:
       allOf:
         - $ref: '#/components/schemas/SendOptions'
         - type: object
-          required: [number, latitude, longitude]
+          required: [number, latitude, longitude, name, address]
           properties:
             number:
               type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
             latitude:
               type: number
               format: double
@@ -496,126 +436,123 @@ components:
           properties:
             number:
               type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
             contact:
-              type: object
-              required: [fullName, phoneNumber]
-              properties:
-                fullName:
-                  type: string
-                phoneNumber:
-                  type: string
-                organization:
-                  type: string
-    SendLinkRequest:
-      allOf:
-        - $ref: '#/components/schemas/SendOptions'
-        - type: object
-          required: [number, url, text]
-          properties:
-            number:
-              type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-            url:
-              type: string
-              format: uri
-            text:
-              type: string
-            title:
-              type: string
-            description:
-              type: string
-            thumbnailUrl:
-              type: string
-              format: uri
+              type: array
+              items:
+                type: object
+                required: [fullName, wuid, phoneNumber]
+                properties:
+                  fullName:
+                    type: string
+                  wuid:
+                    type: string
+                    pattern: "^[0-9]+$"
+                  phoneNumber:
+                    type: string
+                  organization:
+                    type: string
+                  email:
+                    type: string
+                  url:
+                    type: string
     SendStickerRequest:
       allOf:
         - $ref: '#/components/schemas/SendOptions'
         - type: object
-          required: [number, stickerUrl]
+          required: [number, sticker]
           properties:
             number:
               type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-            stickerUrl:
+            sticker:
               type: string
-              format: uri
     SendPollRequest:
       allOf:
         - $ref: '#/components/schemas/SendOptions'
         - type: object
-          required: [number, question, options]
+          required: [number, name, selectableCount, values]
           properties:
             number:
               type: string
-              description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-            question:
+            name:
               type: string
-            options:
+            selectableCount:
+              type: integer
+              minimum: 1
+            values:
               type: array
               minItems: 2
               items:
                 type: string
-            maxAnswer:
-              type: integer
-              minimum: 1
-    ReactRequest:
+    MessageKey:
       type: object
-      required: [number, messageId, reaction]
+      required: [id, fromMe, remoteJid]
+      properties:
+        id:
+          type: string
+        fromMe:
+          type: boolean
+        remoteJid:
+          type: string
+        participant:
+          type: string
+    ReactionRequest:
+      type: object
+      required: [key, reaction]
+      properties:
+        key:
+          $ref: '#/components/schemas/MessageKey'
+        reaction:
+          type: string
+    UpdateMessageRequest:
+      type: object
+      required: [number, key, text]
       properties:
         number:
           type: string
-          description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-        messageId:
-          type: string
-        reaction:
-          type: string
-    EditMessageRequest:
-      type: object
-      required: [chat, messageId, message]
-      properties:
-        chat:
-          type: string
-          description: WhatsApp chat JID, for example 5511999999999@s.whatsapp.net
-        messageId:
-          type: string
-        message:
+        key:
+          $ref: '#/components/schemas/MessageKey'
+        text:
           type: string
     DeleteMessageRequest:
       type: object
-      required: [chat, messageId]
+      required: [id, fromMe, remoteJid]
       properties:
-        chat:
+        id:
           type: string
-          description: WhatsApp chat JID, for example 5511999999999@s.whatsapp.net
-        messageId:
+        fromMe:
+          type: boolean
+        remoteJid:
+          type: string
+        participant:
           type: string
     MarkReadRequest:
       type: object
-      required: [number, messageIds]
+      required: [readMessages]
       properties:
-        number:
-          type: string
-          description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-        messageIds:
+        readMessages:
           type: array
           items:
-            type: string
-    MessageStatusRequest:
+            $ref: '#/components/schemas/MessageKey'
+    FindStatusRequest:
       type: object
-      required: [messageId]
+      required: [where]
       properties:
-        messageId:
-          type: string
+        where:
+          type: object
+          required: [keyId]
+          properties:
+            keyId:
+              type: string
     SetPresenceRequest:
       type: object
-      required: [number, state]
+      required: [number, presence, delay]
       properties:
         number:
           type: string
-          description: WhatsApp JID, for example 5511999999999@s.whatsapp.net
-        state:
+        presence:
           type: string
           enum: [composing, recording]
-        isAudio:
-          type: boolean
+        delay:
+          type: integer
+          default: 1000
+
