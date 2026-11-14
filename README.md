@@ -1,6 +1,18 @@
 # Evolution Go MCP
 
-Servidor MCP local (stdio) para as 24 operações da skill `int-evolution-go`. Expõe somente tools; não registra resources nem prompts. As credenciais são lidas do ambiente e enviadas diretamente à Evolution Go REST API.
+Servidor MCP local (stdio) para as operações da skill `int-evolution-go`. Expõe somente tools; não registra resources nem prompts. As credenciais são lidas do ambiente e enviadas diretamente à Evolution Go REST API. Para usar o adapter OpenAPI do Obot, importe [`openapi.yaml`](openapi.yaml).
+
+## Obot OpenAPI adapter
+
+No Obot, escolha **Add MCP Server → OpenAPI → URL** e informe:
+
+```text
+https://raw.githubusercontent.com/ivaisoft/evolution-go-mcp/main/openapi.yaml
+```
+
+Revise a URL base (`servers` no spec) para apontar à sua instância, confirme o header `apikey` como credencial obrigatória e sensível, salve e adicione a entrada a um vMCP. O spec não publica DNS interno. A documentação atual do Obot exige HTTPS para destinos OpenAPI e aplica bloqueio a destinos privados por padrão; para usar um serviço interno, ele precisa ter um destino HTTPS alcançável pelo Obot e a política de egress deve permitir o acesso.
+
+O spec descreve diretamente os endpoints REST. Ele não inclui o helper local `summary` e, sem o wrapper MCP, os campos `number` devem receber JIDs WhatsApp completos, por exemplo `5511999999999@s.whatsapp.net`.
 
 ## Configuração
 
